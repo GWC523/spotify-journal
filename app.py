@@ -71,6 +71,21 @@ def getTracks():
     
     return str(all_playlists)
 
+@app.route('/recently_played')
+def getRecentlyPlayed():
+    try:
+        token_info = get_token()
+    except:
+        print("user not logged in")
+        return redirect("/")
+    
+    sp = spotipy.Spotify(auth=token_info['access_token'])
+    
+    # Fetch recently played tracks
+    recently_played = sp.current_user_recently_played(limit=10)  # Limit to 10 tracks
+    
+    return str(recently_played)
+
 
 def get_token():
     token_info = session.get(TOKEN_INFO, None)
@@ -89,6 +104,6 @@ def create_spotify_oauth():
         client_id = "4cc452c2ffbe46529870e8eacefc0e5c",
         client_secret = "3062ad55a2464af2b1c807af68d83883",
         redirect_uri=url_for('redirectPage', _external=True),
-        scope="user-library-read"
+        scope="user-library-read user-read-recently-played"
     )
 
