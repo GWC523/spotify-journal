@@ -32,7 +32,7 @@ def redirectPage():
     session[TOKEN_INFO] = token_info
     return redirect(url_for('getTracks', _external=True))
 
-@app.route('/getTracks')
+@app.route('/get-tracks')
 def getTracks():
     try:
         token_info = get_token()
@@ -72,7 +72,7 @@ def getTracks():
     
     return str(all_playlists)
 
-@app.route('/get_events', methods=['GET'])
+@app.route('/get-events', methods=['GET'])
 def get_events():
     url = "https://app.ticketmaster.com/discovery/v2/events.json"
     api_key = "0w9wJgajLh6QfnKltKFyIg8A7M5nkE7D"
@@ -112,7 +112,7 @@ def get_events():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/recently_played')
+@app.route('/recently-played')
 def getRecentlyPlayed():
     try:
         token_info = get_token()
