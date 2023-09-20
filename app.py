@@ -1,9 +1,10 @@
-from flask import Flask, request, url_for, session, redirect
+from flask import Flask, request, url_for, session, redirect, jsonify
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 import os
 import time 
+import requests
 
 load_dotenv()
 
@@ -70,6 +71,46 @@ def getTracks():
         })
     
     return str(all_playlists)
+
+@app.route('/get_events', methods=['GET'])
+def get_events():
+    url = "https://app.ticketmaster.com/discovery/v2/events.json"
+    api_key = "0w9wJgajLh6QfnKltKFyIg8A7M5nkE7D"
+
+    # Define the allowed query parameters
+    allowed_params = {
+        'size', 'id', 'keyword', 'attractionId', 'venueId', 'postalCode',
+        'latlong', 'radius', 'unit', 'source', 'locale', 'marketId',
+        'startDateTime', 'endDateTime', 'includeTBA', 'includeTBD',
+        'includeTest', 'sort', 'onsaleStartDateTime', 'onsaleEndDateTime',
+        'city', 'countryCode', 'stateCode', 'classificationName',
+        'classificationId', 'dmaId', 'localStartDateTime',
+        'localStartEndDateTime', 'startEndDateTime',
+        'publicVisibilityStartDateTime', 'preSaleDateTime',
+        'onsaleOnStartDate', 'onsaleOnAfterStartDate',
+        'collectionId', 'segmentId', 'segmentName', 'includeFamily',
+        'promoterId', 'genreId', 'subGenreId', 'typeId', 'subTypeId',
+        'geoPoint', 'preferredCountry', 'includeSpellcheck', 'domain'
+    }
+
+    # Get query parameters from the request
+    params = request.args.to_dict()
+
+    # Filter out any parameters that are not allowed
+    params = {key: params[key] for key in params if key in allowed_params}
+
+    # Add the API key to the parameters
+    params['apikey'] = api_key
+
+    try:
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'Error fetching events'}), response.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/recently_played')
 def getRecentlyPlayed():
