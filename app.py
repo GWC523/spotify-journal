@@ -13,9 +13,13 @@ client_secret = os.getenv("CLIENT_SECRET")
 
 app = Flask(__name__)
 
-app.secret_key = "aN32fgns43cdNo"
+app.secret_key = os.getenv('SECRET_KEY')
 app.config["SESSION_COOKIE_NAME"] = 'My Journal'
 TOKEN_INFO = "token_info"
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+TICKET_MASTER_API_KEY = os.getenv('TICKET_MASTER_API_KEY')
+
 
 @app.route('/')
 def login():
@@ -72,10 +76,81 @@ def getTracks():
     
     return str(all_playlists)
 
+@app.route('/redirect')
+def redirectPage():
+    sp_oauth = create_spotify_oauth()
+    session.clear()
+    code = request.args.get('code')
+    token_info = sp_oauth.get_access_token(code)
+    session[TOKEN_INFO] = token_info
+    return redirect(url_for('getTracks', _external=True))
+
+@app.route('/get-top-artists')
+def getTopArtists():
+    try:
+        token_info = get_token()
+    except:
+        print("user not logged in")
+        return redirect("/")
+    
+    sp = spotipy.Spotify(auth=token_info['access_token'])
+    
+    top_artists = sp.current_user_top_artists()
+    
+    return top_artists
+
+#to do: get-attraction and get-attraction details
+@app.route('/get-artists', methods=['GET'])
+def get_artists():
+    url = "https://app.ticketmaster.com/discovery/v2/attractions.json"
+    api_key = TICKET_MASTER_API_KEY
+
+    # Define the allowed query parameters
+    allowed_params = {
+        'id': str,  # Filter entities by its id
+        'keyword': str,  # Keyword to search on
+        'source': str,  # Filter entities by its primary source name OR publishing source name
+        'locale': str,  # The locale in ISO code format
+        'includeTest': str,  # Entities flagged as test in the response
+        'size': str,  # Page size of the response
+        'page': str,  # Page number
+        'sort': str,  # Sorting order of the search result
+        'classificationName': list,  # Filter attractions by classification name (array)
+        'classificationId': list,  # Filter attractions by classification id (array)
+        'includeFamily': str,  # Filter by classification that are family-friendly
+        'segmentId': list,  # Filter attractions by segmentId (array)
+        'genreId': list,  # Filter attractions by genreId (array)
+        'subGenreId': list,  # Filter attractions by subGenreId (array)
+        'typeId': list,  # Filter attractions by typeId (array)
+        'subTypeId': list,  # Filter attractions by subTypeId (array)
+        'preferredCountry': str,  # Popularity boost by country
+        'includeSpellcheck': str,  # Include spell check suggestions in the response
+        'domain': list  # Filter entities based on domains they are available on (array)
+    }
+
+    # Get query parameters from the request
+    params = request.args.to_dict()
+
+    # Filter out any parameters that are not allowed
+    params = {key: params[key] for key in params if key in allowed_params}
+
+    # Add the API key to the parameters
+    params['apikey'] = api_key
+
+    try:
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'Error fetching artists'}), response.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/get-events', methods=['GET'])
 def get_events():
     url = "https://app.ticketmaster.com/discovery/v2/events.json"
-    api_key = "0w9wJgajLh6QfnKltKFyIg8A7M5nkE7D"
+    api_key = TICKET_MASTER_API_KEY
 
     # Define the allowed query parameters
     allowed_params = {
@@ -112,6 +187,25 @@ def get_events():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/get-event-details/<event_id>', methods=['GET'])
+def get_events(event_id):
+    url = f"https://app.ticketmaster.com/discovery/v2/events/{event_id}.json"
+    api_key = TICKET_MASTER_API_KEY
+
+    # Add the API key to the parameters
+    params = {'apikey': api_key}
+
+    try:
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'Error fetching event details'}), response.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/recently-played')
 def getRecentlyPlayed():
     try:
@@ -142,9 +236,11 @@ def get_token():
 
 def create_spotify_oauth():
     return SpotifyOAuth(
-        client_id = "4cc452c2ffbe46529870e8eacefc0e5c",
-        client_secret = "3062ad55a2464af2b1c807af68d83883",
+        client_id = CLIENT_ID,
+        client_secret = CLIENT_SECRET,
         redirect_uri=url_for('redirectPage', _external=True),
         scope="user-library-read user-read-recently-played"
     )
+
+#To do: setup database connection 
 
