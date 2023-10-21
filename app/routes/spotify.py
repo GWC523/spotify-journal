@@ -1,33 +1,22 @@
-from flask import Flask, request, url_for, session, redirect, jsonify
+from flask import Blueprint, request, url_for, session, redirect, jsonify, current_app
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from dotenv import load_dotenv
-import os
 import time 
 import requests
 
-load_dotenv()
+spotify = Blueprint('spotify', __name__)
+TOKEN_INFO = current_app.config['TOKEN_INFO']
+TICKET_MASTER_API_KEY = current_app.config['TICKET_MASTER_API_KEY']
+CLIENT_ID = current_app.config['CLIENT_ID']
+CLIENT_SECRET = current_app.config['CLIENT_SECRET']
 
-client_id = os.getenv("CLIENT_ID")
-client_secret = os.getenv("CLIENT_SECRET")
-
-app = Flask(__name__)
-
-app.secret_key = os.getenv('SECRET_KEY')
-app.config["SESSION_COOKIE_NAME"] = 'My Journal'
-TOKEN_INFO = "token_info"
-CLIENT_ID = os.getenv('CLIENT_ID')
-CLIENT_SECRET = os.getenv('CLIENT_SECRET')
-TICKET_MASTER_API_KEY = os.getenv('TICKET_MASTER_API_KEY')
-
-
-@app.route('/')
+@spotify.route('/')
 def login():
     sp_oauth = create_spotify_oauth()
     auth_url = sp_oauth.get_authorize_url()
     return redirect(auth_url)
 
-@app.route('/redirect')
+@spotify.route('/redirect')
 def redirectPage():
     sp_oauth = create_spotify_oauth()
     session.clear()
@@ -36,7 +25,7 @@ def redirectPage():
     session[TOKEN_INFO] = token_info
     return redirect(url_for('getTracks', _external=True))
 
-@app.route('/get-tracks')
+@spotify.route('/get-tracks')
 def getTracks():
     try:
         token_info = get_token()
@@ -76,7 +65,7 @@ def getTracks():
     
     return str(all_playlists)
 
-@app.route('/redirect')
+@spotify.route('/redirect')
 def redirectPage():
     sp_oauth = create_spotify_oauth()
     session.clear()
@@ -85,7 +74,7 @@ def redirectPage():
     session[TOKEN_INFO] = token_info
     return redirect(url_for('getTracks', _external=True))
 
-@app.route('/get-top-artists')
+@spotify.route('/get-top-artists')
 def getTopArtists():
     try:
         token_info = get_token()
@@ -100,7 +89,7 @@ def getTopArtists():
     return top_artists
 
 #to do: get-attraction and get-attraction details
-@app.route('/get-artists', methods=['GET'])
+@spotify.route('/get-artists', methods=['GET'])
 def get_artists():
     url = "https://app.ticketmaster.com/discovery/v2/attractions.json"
     api_key = TICKET_MASTER_API_KEY
@@ -147,7 +136,7 @@ def get_artists():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/get-events', methods=['GET'])
+@spotify.route('/get-events', methods=['GET'])
 def get_events():
     url = "https://app.ticketmaster.com/discovery/v2/events.json"
     api_key = TICKET_MASTER_API_KEY
@@ -187,7 +176,7 @@ def get_events():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/get-event-details/<event_id>', methods=['GET'])
+@spotify.route('/get-event-details/<event_id>', methods=['GET'])
 def get_events(event_id):
     url = f"https://app.ticketmaster.com/discovery/v2/events/{event_id}.json"
     api_key = TICKET_MASTER_API_KEY
@@ -206,7 +195,7 @@ def get_events(event_id):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/recently-played')
+@spotify.route('/recently-played')
 def getRecentlyPlayed():
     try:
         token_info = get_token()
@@ -220,7 +209,6 @@ def getRecentlyPlayed():
     recently_played = sp.current_user_recently_played(limit=10)  # Limit to 10 tracks
     
     return str(recently_played)
-
 
 def get_token():
     token_info = session.get(TOKEN_INFO, None)
@@ -242,5 +230,5 @@ def create_spotify_oauth():
         scope="user-library-read user-read-recently-played"
     )
 
-#To do: setup database connection 
+
 
